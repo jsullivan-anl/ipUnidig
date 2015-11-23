@@ -13,6 +13,7 @@
     27-May-2003 MLR  Converted to EPICS R3.14.
     29-Jun-2004 MLR  Converted from MPF to asyn, and from C++ to C
     28-Jul-2004 MLR  Converted to generic asynUInt32Digital interfaces
+    11-Nov-2015 PASKVAN   Add support for Acromag Brand Cards (IP408 DIO Specifically) 
 */
 
 /* System includes */
@@ -42,6 +43,7 @@
 #define GREENSPRING_ID 0xF0
 #define SYSTRAN_ID     0x45
 #define SBS_ID         0xB3
+#define ACROMAG_ID     0xA3
 
 #define UNIDIG_E          0x51 /*IP-Unidig-E          (24 I/O, LineSafe) */
 #define UNIDIG            0x61 /*IP-Unidig            (24 I/O) */
@@ -64,6 +66,8 @@
 #define UNIDIG_O_24I      0x73 /*IP-Unidig-O-24I      (24I. opt. iso.) */
 #define UNIDIG_HV_8I16O   0x74 /*IP-Unidig-HV-8I16O   (8I, 16O, high voltage) */
 #define UNIDIG_I_HV_8I16O 0x75 /*IP-Unidig-I-HV-8I16O (8I, 16O, high voltage, ints.) */
+
+#define ACROMAG_IP408_32  0x03 /*ACROMAG IP408 32 CHANNEL DIGITAL IO */
 
 #define SYSTRAN_DIO316I   0x63
 
@@ -246,7 +250,13 @@ IpUnidig::IpUnidig(const char *portName, int carrier, int slot, int msecPoll, in
       errlogPrintf("IpUnidig model 0x%x not SBS IP-OPTOIO-8\n",model_);
     }
     break;
-     
+    
+  case ACROMAG_ID:
+    if(model_ != ACROMAG_IP408_32) {
+      errlogPrintf("ACROMAG model 0x%x not IP408 32 Channel Digital I/O\n",model_);
+    }
+    break;
+    
   default: 
     errlogPrintf("IpUnidig manufacturer 0x%x not supported\n", manufacturer_);
     break;
@@ -308,7 +318,19 @@ IpUnidig::IpUnidig(const char *portName, int carrier, int slot, int msecPoll, in
           *regs_.controlRegister1  |= 0x3;
           break;
       }
-      break;
+    case ACROMAG_ID:
+      switch (model_) {
+        case ACROMAG_IP408_32:
+          /* Different register layout */
+          regs_.inputRegisterLow         = base;
+          regs_.inputRegisterHigh        = base + 0x1;
+          regs_.outputRegisterLow         = base + 0x2;
+          regs_.outputRegisterHigh        = base + 0x3;
+          regs_.intVecRegister           = base + 0x8;
+          break;
+      }
+break;
+      
     case SBS_ID:
       switch (model_) {
         case SBS_IPOPTOIO8:
